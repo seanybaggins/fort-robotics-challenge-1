@@ -22,7 +22,7 @@ int _allocate_mem_init_process(Init_ProcessInfo* initProcessInfo) {
 }
 
 static int _init_process_handler(void* arg) {
-    printf("Init Process here. My pid is %d.", getpid());
+    printf("Init Process here. My pid is %d.\n", getpid());
     return 0;
 }
 

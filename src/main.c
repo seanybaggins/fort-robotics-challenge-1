@@ -12,6 +12,6 @@ int my_main() {
 
     printf("Entry Process here. the initPid is %d.\n", initPid);
 
-    // TODO: Make sure that the pid will not pre-emptively close
+    sleep(1);
     return EXIT_SUCCESS;
 }

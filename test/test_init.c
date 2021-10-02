@@ -1,8 +1,8 @@
 #ifdef TEST
 
 #include "unity.h"
-
 #include "init.h"
+#include "pid_stack.h"
 
 void setUp(void)
 {

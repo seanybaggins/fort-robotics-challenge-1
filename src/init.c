@@ -1,16 +1,20 @@
 #define STACK_SIZE (1024 * 1024)   
-#define _GNU_SOURCE    // Needed for clone to be defined
+#define _GNU_SOURCE      // Needed for clone to be defined
 
 #include "init.h"
-#include <sys/mman.h>  // For nman memory allocation
+#include "pid_stack.h"
+#include <sys/mman.h>    // For nman memory allocation
+#include <sched.h>       // For clone
 #include <sys/types.h>
 #include <stdio.h>
-#include <unistd.h>    // For getpid
-#include <sys/wait.h>  // For SIGCHLD
-#include <sched.h>     // For clone
+#include <stdlib.h>      // For EXIT_FAILURE
+#include <unistd.h>      // For getpid
+#include <sys/wait.h>    // For SIGCHLD
 
+// Cannot avoid a global variable since arguments cannot be passed to the singal
+// handlers
+static PidStack pidStack;
 
-// Returns 0 if successful. Otherwise returns -1.
 static int _allocate_mem_init_process(Init_ProcessInfo* initProcessInfo) {
     initProcessInfo->stackBottom = mmap(NULL, STACK_SIZE, PROT_READ | PROT_WRITE,
         MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK, -1, 0);
@@ -21,28 +25,64 @@ static int _allocate_mem_init_process(Init_ProcessInfo* initProcessInfo) {
     return 0;
 }
 
+//static int _spawn_child() {
+//
+//}
+
 // TODO: 
 // 1. Set the signal handlers for this process.
 // 2. When recieving SIGUSR1 - create a new child thread within the PID namespace.
 // 3. When recieving SIGINT - kill the most recently created child in the PID namespace
 // 4. When recieving SIGUSR2 - write a listing of the existing children and their PIDs (within the
 //            created namespace) to a file 'pidlist.txt'
-static void _init_process_sigusr1_handler() {
+// Create a new child thread within the PID namespace.
+static void _create_child() {
     printf("Init Process here. My pid is %d. SIGUSR1 recieved.\n", getpid());
+    if (Pid_Stack_isFull(&pidStack)) {
+        printf("The max number of children has been reached."
+            "Request for new child rejected.\n");
+        return;
+    }
+    pid_t pid = fork();
+    if (pid == -1) {
+        perror("Unable to create child");
+        exit(EXIT_FAILURE);
+    } else if (pid == 0) {
+        printf("Child here. My pid is %d. My parent is %d.\n", getpid(), getppid());
+        while (true) {}
+    } else {
+        int ret = Pid_Stack_push(&pidStack, pid);
+        if (ret == -1) {
+            printf("Error occured when appending child to stack"
+                "despite stack is full pre check.\n");
+            exit(EXIT_FAILURE);
+        }
+    }
 }
 
-static void _init_process_sigusr2_handler() {
+static void _kill_youngest_child() { // Sounds rather morbid
     printf("Init Process here. My pid is %d. SIGUSR2 recieved.\n", getpid());
+    pid_t pid = Pid_Stack_pop(&pidStack);
+    if (pid == -1) {
+        printf("There are no children to kill."
+            "request denied.\n");
+        return;
+    } 
+    int ret = kill(pid, SIGTERM);
+    if (ret == -1) {
+        perror("Unable to kill process");
+        exit(EXIT_FAILURE);
+    }
 }
 
-static void _init_process_sigint_handler() {
+static void _write_children_to_file() {
     printf("Init Process here. My pid is %d. SIGINT recieved.\n", getpid());
 }
 
 static int _init_process_handler(void* arg) {
-    signal(SIGUSR1, _init_process_sigusr1_handler);
-    signal(SIGUSR2, _init_process_sigusr2_handler);
-    signal(SIGINT, _init_process_sigint_handler);
+    signal(SIGUSR1, _create_child);
+    signal(SIGUSR2, _write_children_to_file);
+    signal(SIGINT, _kill_youngest_child);
     printf("Init Process here. My pid is %d.\n", getpid());
     while (1) {
 
@@ -55,6 +95,7 @@ pid_t Init_processCreate(Init_ProcessInfo* initProcessInfo) {
         printf("memory allocation failed\n");
         return -1;
     }
+    Pid_Stack_init(&pidStack);
     return clone(_init_process_handler, initProcessInfo->stackTop, CLONE_NEWPID
         | SIGCHLD, NULL);
 }

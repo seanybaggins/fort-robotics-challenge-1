@@ -111,7 +111,7 @@ make run
 ## Final Notes
 You can gracefully exit the program by using the following command.
 ```
-kill <init pid>
+sudo kill <init pid>
 ```
 > Note: The init pid will be printed to the console at the start of the
 > application.

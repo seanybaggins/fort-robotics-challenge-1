@@ -74,3 +74,44 @@ If you require clarification on any portion of the task, feel free to contact
 Bob Sherbert <bob@fortrobotics.com>
 
 Good Luck & Happy Hacking!
+
+# Sean Link's Instructions
+
+## Dependencies
+1. Install docker using either your package manager or following the instructions
+for your distribution [here](https://docs.docker.com/engine/install/).
+2. Test your docker installation by running the following command.
+```
+docker run hello-world
+```
+> Note: If you are unable run docker, make sure your current user is part of the
+> docker group by following the instructions [here](https://docs.docker.com/engine/install/linux-postinstall/).
+
+## Running Test
+Run unit tests by running the following command.
+```
+make test
+```
+
+## Building final executible
+Build the final binary by running the following command.
+```
+make build
+```
+
+## Running the final binary
+Run the final binary by running the following command.
+```
+make run
+```
+> Note: The finaly binary will be run on the local machine, not a container. I
+> did this in case you wanted to pass signals to the process running your own
+> script.
+
+## Final Notes
+You can gracefully exit the program by using the following command.
+```
+kill <init pid>
+```
+> Note: The init pid will be printed to the console at the start of the
+> application.

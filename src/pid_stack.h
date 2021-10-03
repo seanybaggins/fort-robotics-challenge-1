@@ -25,4 +25,11 @@ pid_t Pid_Stack_pop(PidStack* pidStack);
 //      Failure: -1
 int Pid_Stack_push(PidStack* pidStack, pid_t pid);
 
+void Pid_Stack_printToStdOut(const PidStack*);
+
+// Return: 
+//      Success: 0
+//      Failure: -1. Errno will also be set.
+int Pid_Stack_printToPidListTxt(const PidStack*);
+
 #endif // PID_STACK_H

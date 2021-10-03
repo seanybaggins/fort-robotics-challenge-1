@@ -5,7 +5,7 @@
 #include "pid_stack.h"
 #include <sys/mman.h>    // For nman memory allocation
 #include <sched.h>       // For clone
-#include <sys/types.h>
+//#include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>      // For EXIT_FAILURE
 #include <unistd.h>      // For getpid
@@ -25,47 +25,47 @@ static int _allocate_mem_init_process(Init_ProcessInfo* initProcessInfo) {
     return 0;
 }
 
-//static int _spawn_child() {
-//
-//}
-
-// TODO: 
-// 1. Set the signal handlers for this process.
-// 2. When recieving SIGUSR1 - create a new child thread within the PID namespace.
-// 3. When recieving SIGINT - kill the most recently created child in the PID namespace
-// 4. When recieving SIGUSR2 - write a listing of the existing children and their PIDs (within the
-//            created namespace) to a file 'pidlist.txt'
-// Create a new child thread within the PID namespace.
 static void _create_child() {
-    printf("Init Process here. My pid is %d. SIGUSR1 recieved.\n", getpid());
+    printf("Init Process here. My pid is %d. Creating Child.\n", getpid());
+    printf("List of children before new child: ");
+    Pid_Stack_printToStdOut(&pidStack);
+
     if (Pid_Stack_isFull(&pidStack)) {
-        printf("The max number of children has been reached."
+        printf("The max number of children has been reached. "
             "Request for new child rejected.\n");
         return;
     }
+
     pid_t pid = fork();
     if (pid == -1) {
         perror("Unable to create child");
         exit(EXIT_FAILURE);
     } else if (pid == 0) {
         printf("Child here. My pid is %d. My parent is %d.\n", getpid(), getppid());
+        // When the init process recieves a TERM signal. The children recieve
+        // an INT signal. Lets ensure that the childen exit properly.
         while (true) {}
     } else {
         int ret = Pid_Stack_push(&pidStack, pid);
         if (ret == -1) {
             printf("Error occured when appending child to stack"
-                "despite stack is full pre check.\n");
+                "despite stack full pre check.\n");
             exit(EXIT_FAILURE);
         }
+
+        printf("List of Children after new child: ");
+        Pid_Stack_printToStdOut(&pidStack);
     }
 }
 
 static void _kill_youngest_child() { // Sounds rather morbid
-    printf("Init Process here. My pid is %d. SIGUSR2 recieved.\n", getpid());
+    printf("Init Process here. My pid is %d. Attempting to kill child.\n", getpid());
+    printf("List of children before kill: ");
+    Pid_Stack_printToStdOut(&pidStack);
+
     pid_t pid = Pid_Stack_pop(&pidStack);
     if (pid == -1) {
-        printf("There are no children to kill."
-            "request denied.\n");
+        printf("There are no children to kill. Request denied.\n");
         return;
     } 
     int ret = kill(pid, SIGTERM);
@@ -73,20 +73,33 @@ static void _kill_youngest_child() { // Sounds rather morbid
         perror("Unable to kill process");
         exit(EXIT_FAILURE);
     }
+
+    printf("List of Children after kill: ");
+    Pid_Stack_printToStdOut(&pidStack);
+}
+
+static void _graceful_shutdown() {
+    printf("Init Process here. My pid %d. Attempting graceful shutdown\n", getpid());
+    while (!Pid_Stack_isEmpty(&pidStack)) {
+        _kill_youngest_child();
+    }
+    exit(EXIT_SUCCESS);
 }
 
 static void _write_children_to_file() {
     printf("Init Process here. My pid is %d. SIGINT recieved.\n", getpid());
 }
 
+// Would prefer to have this return void but clone expects its function arguemt
+// will return an int. There will be a compiler warning if this function does
+// not return an int.
 static int _init_process_handler(void* arg) {
     signal(SIGUSR1, _create_child);
     signal(SIGUSR2, _write_children_to_file);
     signal(SIGINT, _kill_youngest_child);
+    signal(SIGTERM, _graceful_shutdown);
     printf("Init Process here. My pid is %d.\n", getpid());
-    while (1) {
-
-    }
+    while (true) {}
     return 0;
 }
 
@@ -96,7 +109,6 @@ pid_t Init_processCreate(Init_ProcessInfo* initProcessInfo) {
         return -1;
     }
     Pid_Stack_init(&pidStack);
-    return clone(_init_process_handler, initProcessInfo->stackTop, CLONE_NEWPID
-        | SIGCHLD, NULL);
+    return clone(_init_process_handler, initProcessInfo->stackTop, CLONE_NEWPID | SIGCHLD, NULL);
 }
 

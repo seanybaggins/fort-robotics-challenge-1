@@ -1,5 +1,5 @@
 #include "pid_stack.h"
-
+#include <stdio.h>
 
 void Pid_Stack_init(PidStack* pidStack) {
     pidStack->top = -1;
@@ -34,4 +34,18 @@ bool Pid_Stack_isEmpty(const PidStack* pidStack) {
 bool Pid_Stack_isFull(const PidStack* pidStack) {
     return pidStack->top == (MAX_SIZE - 1);
 }
+
+void Pid_Stack_printToStdOut(const PidStack* pidStack) {
+    printf("[");
+    if (!Pid_Stack_isEmpty(pidStack)) {
+        printf("%d", pidStack->buffer[0]);
+    }
+    if (pidStack->top >= 1) {
+        for (int i = 1; i <= pidStack->top; i++) {
+            printf(" ,%d", pidStack->buffer[i]);
+        }
+    }
+    printf("]\n");
+}
+
 

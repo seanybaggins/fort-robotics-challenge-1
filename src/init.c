@@ -3,13 +3,12 @@
 
 #include "init.h"
 #include "pid_stack.h"
-#include <sys/mman.h>    // For nman memory allocation
-#include <sched.h>       // For clone
-//#include <sys/types.h>
-#include <stdio.h>
-#include <stdlib.h>      // For EXIT_FAILURE
-#include <unistd.h>      // For getpid
-#include <sys/wait.h>    // For SIGCHLD
+#include <sys/mman.h> // For nman memory allocation
+#include <sched.h>    // For clone
+#include <stdio.h>    // For printf
+#include <stdlib.h>   // For EXIT_FAILURE
+#include <unistd.h>   // For getpid
+#include <sys/wait.h> // For SIGCHLD
 
 // Cannot avoid a global variable since arguments cannot be passed to the singal
 // handlers
@@ -68,7 +67,7 @@ static void _kill_youngest_child() { // Sounds rather morbid
         printf("There are no children to kill. Request denied.\n");
         return;
     } 
-    int ret = kill(pid, SIGTERM);
+    int ret = kill(pid, SIGKILL);
     if (ret == -1) {
         perror("Unable to kill process");
         exit(EXIT_FAILURE);
@@ -79,7 +78,7 @@ static void _kill_youngest_child() { // Sounds rather morbid
 }
 
 static void _graceful_shutdown() {
-    printf("Init Process here. My pid %d. Attempting graceful shutdown\n", getpid());
+    printf("Init Process here. My pid %d. Attempting graceful shutdown.\n", getpid());
     while (!Pid_Stack_isEmpty(&pidStack)) {
         _kill_youngest_child();
     }
@@ -87,7 +86,12 @@ static void _graceful_shutdown() {
 }
 
 static void _write_children_to_file() {
-    printf("Init Process here. My pid is %d. SIGINT recieved.\n", getpid());
+    printf("Init Process here. My pid is %d. Writing Children pids to file.\n", getpid());
+    int ret = Pid_Stack_printToPidListTxt(&pidStack);
+    if (ret == -1) {
+        perror("unable to write children to file");
+        exit(EXIT_FAILURE);
+    }
 }
 
 // Would prefer to have this return void but clone expects its function arguemt

@@ -1,5 +1,6 @@
 #include "pid_stack.h"
 #include <stdio.h>
+#include <unistd.h>
 
 void Pid_Stack_init(PidStack* pidStack) {
     pidStack->top = -1;
@@ -48,4 +49,22 @@ void Pid_Stack_printToStdOut(const PidStack* pidStack) {
     printf("]\n");
 }
 
+int Pid_Stack_printToPidListTxt(const PidStack* pidStack) {
+    FILE* pidListTxt = fopen("pidlist.txt", "w");
+    if (pidListTxt == NULL) {
+        return -1;
+    }
+    fprintf(pidListTxt, "[");
+    if (!Pid_Stack_isEmpty(pidStack)) {
+        fprintf(pidListTxt, "%d", pidStack->buffer[0]);
+    }
+    if (pidStack->top >= 1) {
+        for (int i = 1; i <= pidStack->top; i++) {
+            fprintf(pidListTxt, " ,%d", pidStack->buffer[i]);
+        }
+    }
+    fprintf(pidListTxt, "]\n");
+    fclose(pidListTxt);
+    return 0;
+}
 

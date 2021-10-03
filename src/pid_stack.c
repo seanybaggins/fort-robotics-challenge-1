@@ -64,7 +64,10 @@ int Pid_Stack_printToPidListTxt(const PidStack* pidStack) {
         }
     }
     fprintf(pidListTxt, "]\n");
-    fclose(pidListTxt);
+    int ret = fclose(pidListTxt);
+    if (ret == -1) {
+        return -1;
+    }
     return 0;
 }
 
